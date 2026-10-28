@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": ["@cloudflare/workers-types"],
+    "lib": ["ES2022"]
+  },
+  "include": ["src/worker.ts", "src/store/d1.ts", "src/app.ts", "src/core/**/*.ts", "src/oauth/**/*.ts", "src/mcp/**/*.ts", "src/ui/**/*.ts", "src/store/types.ts", "src/store/schema.ts", "src/crypto.ts", "src/totp.ts", "src/auth.ts", "src/audit.ts", "src/config.ts"]
+}

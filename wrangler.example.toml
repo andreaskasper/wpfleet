@@ -1,0 +1,16 @@
+# Cloudflare Worker variant (untested in production). Copy to wrangler.toml.
+name = "wpfleet"
+main = "src/worker.ts"
+compatibility_date = "2025-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "wpfleet"
+database_id = "REPLACE_WITH_D1_ID"
+
+[vars]
+FLEET_PUBLIC_URL = "https://wpfleet.example.com"
+FLEET_PBKDF2_ITERATIONS = "100000"
+FLEET_IP_HEADER = "cf-connecting-ip"
+# Secrets: wrangler secret put FLEET_KEK   (and optionally FLEET_SETUP_TOKEN)

@@ -1,0 +1,32 @@
+# WP Fleet on a Docker host with Traefik 2 (host network, docker provider,
+# entrypoints "http"/"https", cert resolver "letsencrypt").
+# 1. cp deploy/docker-compose.yml + deploy/.env.example to /var/docker/wpfleet/
+# 2. fill .env (openssl rand -base64 32 for FLEET_KEK) — never commit it
+# 3. docker compose up -d
+# 4. docker exec -it wpfleet node dist/cli.js admin-create --user <name>
+services:
+  wpfleet:
+    # For a reviewed, fixed version pin a digest instead: ghcr.io/andreaskasper/wpfleet@sha256:…
+    # (Watchtower then no longer updates it.)
+    image: ghcr.io/andreaskasper/wpfleet:latest
+    container_name: wpfleet
+    restart: always
+    env_file: .env
+    volumes:
+      - ./data:/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wpfleet.rule=Host(`wpfleet.goo1.de`)"
+      - "traefik.http.routers.wpfleet.entrypoints=https"
+      - "traefik.http.routers.wpfleet.tls.certresolver=letsencrypt"
+      # Reject oversized bodies before they reach the app (the app limits again: 1 MB /mcp, 64 KB elsewhere).
+      - "traefik.http.routers.wpfleet.middlewares=wpfleet-limit"
+      - "traefik.http.middlewares.wpfleet-limit.buffering.maxRequestBodyBytes=2097152"
+      - "traefik.http.middlewares.wpfleet-limit.buffering.memRequestBodyBytes=1048576"
+      - "traefik.http.routers.wpfleet-http.rule=Host(`wpfleet.goo1.de`)"
+      - "traefik.http.routers.wpfleet-http.entrypoints=http"
+      - "traefik.http.routers.wpfleet-http.middlewares=wpfleet-https"
+      - "traefik.http.middlewares.wpfleet-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.wpfleet-https.redirectscheme.permanent=true"
+      - "traefik.http.services.wpfleet.loadbalancer.server.port=8787"
+      - "com.centurylinklabs.watchtower.enable=true"

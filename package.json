@@ -1,0 +1,29 @@
+{
+  "name": "wpfleet",
+  "version": "0.1.0",
+  "description": "WP Fleet: one MCP connector for many goo1 Claude Bridge WordPress sites",
+  "license": "GPL-2.0-or-later",
+  "author": "Andreas Kasper <andreas.kasper@goo1.de>",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/node.js",
+    "cli": "node dist/cli.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.worker.json --noEmit",
+    "test": "node --test test/"
+  },
+  "dependencies": {
+    "@hono/node-server": "1.19.6",
+    "better-sqlite3": "12.4.1",
+    "hono": "4.10.4",
+    "qrcode": "1.5.4"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "4.20251014.0",
+    "@types/better-sqlite3": "7.6.13",
+    "@types/node": "22.18.12",
+    "@types/qrcode": "1.5.5",
+    "typescript": "5.9.3"
+  }
+}
