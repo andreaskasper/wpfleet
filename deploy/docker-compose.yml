@@ -19,10 +19,8 @@ services:
       - "traefik.http.routers.wpfleet.rule=Host(`wpfleet.goo1.de`)"
       - "traefik.http.routers.wpfleet.entrypoints=https"
       - "traefik.http.routers.wpfleet.tls.certresolver=letsencrypt"
-      # Reject oversized bodies before they reach the app (the app limits again: 1 MB /mcp, 64 KB elsewhere).
-      - "traefik.http.routers.wpfleet.middlewares=wpfleet-limit"
-      - "traefik.http.middlewares.wpfleet-limit.buffering.maxRequestBodyBytes=2097152"
-      - "traefik.http.middlewares.wpfleet-limit.buffering.memRequestBodyBytes=1048576"
+      # Body limits are enforced by the app (1 MB /mcp, 64 KB elsewhere). Do not add Traefik's
+      # buffering middleware: on Traefik 2.9 it turns the app's empty redirect responses into 500s.
       - "traefik.http.routers.wpfleet-http.rule=Host(`wpfleet.goo1.de`)"
       - "traefik.http.routers.wpfleet-http.entrypoints=http"
       - "traefik.http.routers.wpfleet-http.middlewares=wpfleet-https"

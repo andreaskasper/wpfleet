@@ -86,8 +86,9 @@ docker exec -it wpfleet node dist/cli.js sites
   A flood across many IPs is logged (`login_flood`) instead of locking the
   admin out. Sessions are HttpOnly/Secure/SameSite cookies; forms have CSRF
   tokens and an Origin check; strict CSP; HSTS on https.
-* Request bodies are limited (1 MB for `/mcp`, 64 KB elsewhere; the Traefik
-  labels limit them too), responses from sites to 4 MB.
+* Request bodies are limited (1 MB for `/mcp`, 64 KB elsewhere), responses
+  from sites to 4 MB. (Traefik's buffering middleware is not used: on Traefik
+  2.9 it breaks empty redirect responses.)
 * Only Claude (claude.ai/claude.com) and loopback clients can register; the
   list is configurable.
 * Tokens are only accepted while their connection exists; disconnecting a
