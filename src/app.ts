@@ -56,7 +56,8 @@ export function createApp(d: Deps): Hono<Env> {
     c.set('session', await loadSession(d, getCookie(c, cookieName(d))));
     await next();
     c.header('X-Content-Type-Options', 'nosniff');
-    c.header('Referrer-Policy', 'no-referrer');
+    // same-origin, not no-referrer: with no-referrer browsers send "Origin: null" on form posts and the Origin check fails.
+    c.header('Referrer-Policy', 'same-origin');
     if (d.cfg.publicUrl.startsWith('https://')) c.header('Strict-Transport-Security', 'max-age=31536000');
     if ((c.res.headers.get('content-type') || '').includes('text/html')) {
       c.header('Content-Security-Policy', CSP);

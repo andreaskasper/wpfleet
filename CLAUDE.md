@@ -18,6 +18,7 @@ src/ui/html.ts      escaping template helper `h`, page layout
 src/store/*         Sql interface, schema, sqlite + d1 implementations
 src/node.ts         Docker entry; src/cli.ts admin CLI; src/worker.ts Cloudflare entry
 test/e2e.py         end-to-end test against a local WordPress + Bridge
+test/browser.cjs    Playwright smoke test of login/TOTP/admin forms in a real browser
 ```
 
 ## Rules
@@ -32,4 +33,5 @@ test/e2e.py         end-to-end test against a local WordPress + Bridge
 - Throttles: always `hit()` (count first, then decide) — never read-then-write.
 - OAuth server: refresh grant runs under `withLock('rt:'+hash)`; the winner's response is sealed in `oauth_rt_used.response_enc` and replayed once within the grace window. A reused code revokes its family.
 - Admin feedback goes through `setFlash()`/`takeFlash()`, never as text in the URL.
-- Run `test/e2e.py` after changes (see README).
+- Run `test/e2e.py` after changes (see README); after changes to headers, cookies or forms also `test/browser.cjs` (a real browser sends Origin according to the Referrer-Policy).
+- Keep `Referrer-Policy: same-origin`: with `no-referrer` browsers send `Origin: null` on form posts and every login fails.
