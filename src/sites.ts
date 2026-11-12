@@ -44,6 +44,15 @@ export class SiteError extends Error {}
 const UA = 'wpfleet/0.1 (+https://github.com/andreaskasper/wpfleet)';
 const MAX_BODY = 4 * 1024 * 1024;
 
+/**
+ * Byte cap for a site's MCP answer. The tool output arrives JSON-escaped
+ * inside the JSON-RPC envelope; WordPress escapes non-ASCII as \uXXXX, so one
+ * character can take up to 6 bytes on the wire (at least 4 MB).
+ */
+export function maxRpcBody(d: Deps): number {
+  return Math.max(MAX_BODY, 6 * d.cfg.maxOutput + 65536);
+}
+
 export function callbackUrl(d: Deps): string {
   return d.cfg.publicUrl + '/sites/callback';
 }
@@ -100,9 +109,9 @@ async function setStatus(d: Deps, id: string, status: string, error: string | nu
 /* ---------------- HTTP helpers ---------------- */
 
 /** Read a response body with a hard byte cap (streamed; the stream is cancelled when the cap is hit). */
-async function readText(r: Response): Promise<string> {
+async function readText(r: Response, max: number = MAX_BODY): Promise<string> {
   const len = Number(r.headers.get('content-length') || 0);
-  if (len > MAX_BODY) {
+  if (len > max) {
     await r.body?.cancel().catch(() => {});
     throw new SiteError('Response too large.');
   }
@@ -114,7 +123,7 @@ async function readText(r: Response): Promise<string> {
     const { done, value } = await reader.read();
     if (done) break;
     total += value.byteLength;
-    if (total > MAX_BODY) {
+    if (total > max) {
       await reader.cancel().catch(() => {});
       throw new SiteError('Response too large.');
     }
@@ -448,7 +457,7 @@ export async function siteRpc(d: Deps, site: SiteRow, method: string, params: un
       site = (await getSite(d, site.id)) || site;
       continue;
     }
-    const text = await readText(r);
+    const text = await readText(r, maxRpcBody(d));
     let json: any = null;
     try {
       json = JSON.parse(text);
