@@ -18,6 +18,8 @@ export interface Config {
   ipHeader: string | null;
   /** Hosts MCP clients may register https redirect URIs on (loopback is always allowed). */
   redirectHosts: string[];
+  /** Characters of tool output passed on to Claude per fleet_call_* (longer output is cut with a note). */
+  maxOutput: number;
 }
 
 export interface Deps {
@@ -56,6 +58,7 @@ export function configFromEnv(env: Record<string, string | undefined>): Config {
     refreshTtlDays: int('FLEET_REFRESH_TTL_DAYS', 90, 1, 365),
     ipHeader: env.FLEET_IP_HEADER ? env.FLEET_IP_HEADER.toLowerCase() : null,
     redirectHosts,
+    maxOutput: int('FLEET_MAX_OUTPUT', 1_000_000, 50_000, 4_000_000),
   };
 }
 

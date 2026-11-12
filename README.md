@@ -62,6 +62,7 @@ individual site connectors.
 | `FLEET_REDIRECT_HOSTS` | hosts MCP clients may register https redirect URIs on (default `claude.ai,claude.com`, subdomains included; loopback always allowed) |
 | `FLEET_SETUP_TOKEN` | optional: allows creating the admin in the browser at `/setup` (≥ 24 chars; remove afterwards) |
 | `FLEET_ACCESS_TTL` | access-token lifetime for Claude in seconds (default 3600) |
+| `FLEET_MAX_OUTPUT` | characters of tool output passed on to Claude per call (default 1000000, 50000–4000000); longer output is cut with a note. Site answers may be up to six times this size on the wire (non-ASCII is escaped as \uXXXX; at least 4 MB). Keep in mind that clients cap tool output too (Claude Code: `MAX_MCP_OUTPUT_TOKENS`, default 25000 tokens ≈ 100000 characters) |
 | `FLEET_REFRESH_TTL_DAYS` | days without use until Claude must reconnect (default 90) |
 | `FLEET_PBKDF2_ITERATIONS` | password hashing (default 600000; Workers: 100000) |
 | `FLEET_DB_PATH` | SQLite file (default `/data/wpfleet.db`) |
@@ -87,7 +88,7 @@ docker exec -it wpfleet node dist/cli.js sites
   admin out. Sessions are HttpOnly/Secure/SameSite cookies; forms have CSRF
   tokens and an Origin check; strict CSP; HSTS on https.
 * Request bodies are limited (1 MB for `/mcp`, 64 KB elsewhere), responses
-  from sites to 4 MB. (Traefik's buffering middleware is not used: on Traefik
+  from sites to 6 × `FLEET_MAX_OUTPUT` (at least 4 MB). (Traefik's buffering middleware is not used: on Traefik
   2.9 it breaks empty redirect responses.)
 * Only Claude (claude.ai/claude.com) and loopback clients can register; the
   list is configurable.

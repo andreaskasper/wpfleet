@@ -16,7 +16,6 @@ import type { AccessInfo } from '../oauth/server.js';
 import { listSites, siteRpc, toolAccess, toolsFor, type SiteRow, type ToolDef, SiteError } from '../sites.js';
 
 export const PROTOCOL_VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05'];
-const MAX_OUTPUT = 300_000;
 const MULTI_CONCURRENCY = 4;
 
 const callProps = {
@@ -280,6 +279,28 @@ async function callOne(d: Deps, acc: AccessInfo, site: SiteRow, tool: string, ar
   }
 }
 
+/** Cut the text parts of one site's answer to the output limit (FLEET_MAX_OUTPUT). */
+function capContent(content: unknown[], max: number): unknown[] {
+  if (!Array.isArray(content)) return [];
+  let left = max;
+  const out: unknown[] = [];
+  for (const c of content as any[]) {
+    if (c?.type !== 'text') {
+      out.push(c);
+      continue;
+    }
+    const t = String(c.text ?? '');
+    if (t.length <= left) {
+      out.push(c);
+      left -= t.length;
+      continue;
+    }
+    out.push({ ...c, text: t.slice(0, Math.max(0, left)) + '\n… [truncated: ' + t.length + ' characters (FLEET_MAX_OUTPUT ' + max + '); narrow the arguments, e.g. fewer lines or a smaller page]' });
+    left = 0;
+  }
+  return out;
+}
+
 function contentText(content: any[]): string {
   return content.filter((c) => c?.type === 'text').map((c) => String(c.text)).join('\n');
 }
@@ -312,21 +333,31 @@ async function callTool(d: Deps, acc: AccessInfo, args: any, mode: 'read' | 'wri
   if (!multi) {
     const r = await callOne(d, acc, targets[0], tool, inner, mode);
     if ('error' in r && r.error) return text({ site: targets[0].id, error: r.error }, true);
-    const content = (r as any).content as unknown[];
+    const content = capContent((r as any).content as unknown[], d.cfg.maxOutput);
     if (stripped) content.push({ type: 'text', text: 'Note: `unredacted` was ignored; fleet_call_read never returns secrets. Use fleet_call_write for that (the site must grant it).' });
     return { content, isError: r.isError };
   }
 
   // Several sites: run in parallel (bounded), collect one entry per site.
+  // Each site's text is capped on arrival and collection stops once the
+  // output limit is used up, so memory stays bounded however many sites answer.
+  const max = d.cfg.maxOutput;
   const results: Record<string, unknown> = {};
+  let used = 0;
   let i = 0;
   const worker = async () => {
     while (i < targets.length) {
       const s = targets[i++];
+      if (used >= max) {
+        results[s.id] = { isError: true, error: 'Skipped: output limit (FLEET_MAX_OUTPUT ' + max + ') reached; call fewer sites.' };
+        continue;
+      }
       const r = await callOne(d, acc, s, tool, inner, mode);
       if ('error' in r && r.error) results[s.id] = { isError: true, error: r.error };
       else {
-        const t = contentText((r as any).content);
+        let t = contentText((r as any).content);
+        if (t.length > max - used) t = t.slice(0, Math.max(0, max - used)) + '\n… [truncated: ' + t.length + ' characters (FLEET_MAX_OUTPUT ' + max + ')]';
+        used += t.length;
         let data: unknown = t;
         try {
           data = JSON.parse(t);
@@ -341,8 +372,8 @@ async function callTool(d: Deps, acc: AccessInfo, args: any, mode: 'read' | 'wri
   const ordered: Record<string, unknown> = {};
   for (const s of targets) ordered[s.id] = results[s.id];
   let out = JSON.stringify({ tool, sites: targets.length, results: ordered }, null, 1);
-  if (out.length > MAX_OUTPUT) {
-    out = out.slice(0, MAX_OUTPUT) + '\n… [truncated: ' + out.length + ' characters; call fewer sites or narrow the arguments]';
+  if (out.length > d.cfg.maxOutput) {
+    out = out.slice(0, d.cfg.maxOutput) + '\n… [truncated: ' + out.length + ' characters (FLEET_MAX_OUTPUT ' + d.cfg.maxOutput + '); call fewer sites or narrow the arguments]';
   }
   return { content: [{ type: 'text', text: out }], isError: Object.values(ordered).every((r: any) => r?.isError) };
 }
